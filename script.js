@@ -3,24 +3,20 @@ class SpanishLearningApp {
   constructor() {
     this.exercises = [];
     this.currentExercise = null;
+    this.isAnswerChecked = false;
     this.stats = {
       correct: 0,
       total: 0,
     };
 
     this.initializeEventListeners();
+    this.loadExercisesFromExcel();
   }
 
   initializeEventListeners() {
     document
-      .getElementById("loadFile")
-      .addEventListener("click", () => this.loadExcelFile());
-    document
-      .getElementById("checkAnswer")
-      .addEventListener("click", () => this.checkAnswer());
-    document
-      .getElementById("nextQuestion")
-      .addEventListener("click", () => this.nextQuestion());
+      .getElementById("actionButton")
+      .addEventListener("click", () => this.handleButtonClick());
 
     // Allow Enter key to submit answer
     document
@@ -28,40 +24,38 @@ class SpanishLearningApp {
       .addEventListener("keypress", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
-          this.checkAnswer();
+          this.handleButtonClick();
         }
       });
   }
 
-  loadExcelFile() {
-    const fileInput = document.getElementById("fileInput");
-    const file = fileInput.files[0];
-
-    if (!file) {
-      alert("Please select an Excel file first!");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
+  loadExercisesFromExcel() {
+    // Make sure SheetJS is included in your HTML:
+    // <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    fetch("english_spanish_translations.xlsx")
+      .then((response) => response.arrayBuffer())
+      .then((data) => {
         const workbook = XLSX.read(data, { type: "array" });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        this.parseExercises(jsonData);
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        this.parseExercises(json);
         this.startPractice();
-      } catch (error) {
-        alert(
-          "Error reading Excel file. Please make sure it's a valid Excel file."
-        );
-        console.error("Error:", error);
-      }
-    };
+      })
+      .catch((err) => {
+        alert("Failed to load questions from Excel file.");
+        console.error(err);
+      });
+  }
 
-    reader.readAsArrayBuffer(file);
+  handleButtonClick() {
+    if (this.isAnswerChecked) {
+      // Button is in "Next Question" mode
+      this.nextQuestion();
+    } else {
+      // Button is in "Check Answer" mode
+      this.checkAnswer();
+    }
   }
 
   parseExercises(data) {
@@ -106,8 +100,9 @@ class SpanishLearningApp {
   }
 
   startPractice() {
-    document.getElementById("uploadSection").style.display = "none";
+    document.getElementById("loadingSection").style.display = "none";
     document.getElementById("practiceSection").style.display = "block";
+    document.getElementById("statsSection").style.display = "block";
     this.nextQuestion();
   }
 
@@ -129,6 +124,10 @@ class SpanishLearningApp {
     document.getElementById("spanishInput").value = "";
     document.getElementById("resultSection").style.display = "none";
     document.getElementById("spanishInput").focus();
+
+    // Reset button to "Check Answer" mode
+    this.isAnswerChecked = false;
+    this.updateButtonState();
 
     this.updateStats();
   }
@@ -155,7 +154,24 @@ class SpanishLearningApp {
 
     // Display results
     this.displayResults(isCorrect);
+
+    // Switch button to "Next Question" mode
+    this.isAnswerChecked = true;
+    this.updateButtonState();
+
     this.updateStats();
+  }
+
+  updateButtonState() {
+    const button = document.getElementById("actionButton");
+    if (this.isAnswerChecked) {
+      button.innerHTML =
+        '<i class="bi bi-arrow-right-circle"></i> Next Question';
+      button.className = "btn btn-success btn-lg px-4";
+    } else {
+      button.innerHTML = '<i class="bi bi-check-circle"></i> Check Answer';
+      button.className = "btn btn-primary btn-lg px-4";
+    }
   }
 
   isAnswerCorrect(userAnswer, correctAnswers) {
@@ -187,30 +203,40 @@ class SpanishLearningApp {
     const feedback = document.getElementById("feedback");
     const correctAnswers = document.getElementById("correctAnswers");
     const tip = document.getElementById("tip");
+    const tipContent = document.getElementById("tipContent");
 
-    // Show feedback
-    feedback.textContent = isCorrect
-      ? "¡Correcto! Well done!"
-      : "¡Incorrecto! Try again next time.";
-    feedback.className = `feedback ${isCorrect ? "correct" : "incorrect"}`;
+    // Show feedback with Bootstrap alert classes
+    feedback.innerHTML = `<i class="bi bi-${
+      isCorrect ? "check-circle-fill" : "x-circle-fill"
+    }"></i> 
+                             ${
+                               isCorrect
+                                 ? "¡Correcto! Well done!"
+                                 : "¡Incorrecto! Try again next time."
+                             }`;
+    feedback.className = `alert ${
+      isCorrect ? "alert-success correct" : "alert-danger incorrect"
+    } text-center fw-bold`;
 
-    // Show correct answers
+    // Show correct answers as Bootstrap list group
     correctAnswers.innerHTML = "";
     this.currentExercise.spanish.forEach((answer) => {
       const li = document.createElement("li");
-      li.textContent = answer;
+      li.className = "list-group-item";
+      li.innerHTML = `<i class="bi bi-check-circle text-success me-2"></i>${answer}`;
       correctAnswers.appendChild(li);
     });
 
     // Show tip if available
     if (this.currentExercise.tip) {
-      tip.textContent = this.currentExercise.tip;
+      tipContent.textContent = this.currentExercise.tip;
       tip.style.display = "block";
     } else {
       tip.style.display = "none";
     }
 
     resultSection.style.display = "block";
+    resultSection.classList.add("fade-in");
   }
 
   updateStats() {
