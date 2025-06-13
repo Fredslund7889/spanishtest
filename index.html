@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spanish Learning Practice</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Spanish Learning Practice</h1>
+        <p>Translate English sentences to Spanish</p>
+      </header>
+
+      <div class="upload-section" id="uploadSection">
+        <h2>Upload Your Excel File</h2>
+        <p>Upload an Excel file with:</p>
+        <ul>
+          <li>Column A: English sentence</li>
+          <li>Column B, C, D: Spanish translations (C and D optional)</li>
+          <li>Column E: Optional tip</li>
+        </ul>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" />
+        <button id="loadFile">Load Exercises</button>
+      </div>
+
+      <div class="practice-section" id="practiceSection" style="display: none">
+        <div class="exercise-card">
+          <div class="english-sentence">
+            <h2>Translate this sentence:</h2>
+            <p id="englishText"></p>
+          </div>
+
+          <div class="input-section">
+            <textarea
+              id="spanishInput"
+              placeholder="Type your Spanish translation here..."
+            ></textarea>
+            <button id="checkAnswer">Check Answer</button>
+          </div>
+
+          <div class="result-section" id="resultSection" style="display: none">
+            <div class="feedback" id="feedback"></div>
+            <div class="correct-answers">
+              <h3>Correct translations:</h3>
+              <ul id="correctAnswers"></ul>
+            </div>
+            <div class="tip" id="tip"></div>
+            <button id="nextQuestion">Next Question</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-label">Correct:</span>
+            <span id="correctCount">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Total:</span>
+            <span id="totalCount">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Accuracy:</span>
+            <span id="accuracy">0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
