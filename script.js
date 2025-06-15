@@ -2,12 +2,13 @@
 class SpanishLearningApp {
   constructor() {
     this.exercises = [];
+    this.filteredExercises = [];
     this.currentExercise = null;
     this.isAnswerChecked = false;
-    this.stats = {
-      correct: 0,
-      total: 0,
-    };
+    this.stats = { correct: 0, total: 0 };
+    this.selectedDifficulty = null;
+    this.selectedTheme = "";
+    this.selectedSubtheme = "";
 
     this.initializeEventListeners();
     this.loadExercisesFromExcel();
@@ -18,7 +19,6 @@ class SpanishLearningApp {
       .getElementById("actionButton")
       .addEventListener("click", () => this.handleButtonClick());
 
-    // Allow Enter key to submit answer
     document
       .getElementById("spanishInput")
       .addEventListener("keypress", (e) => {
@@ -26,6 +26,33 @@ class SpanishLearningApp {
           e.preventDefault();
           this.handleButtonClick();
         }
+      });
+
+    // Difficulty buttons
+    document.querySelectorAll(".btn-difficulty").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        this.selectedDifficulty = btn.getAttribute("data-diff");
+        document
+          .querySelectorAll(".btn-difficulty")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.applyFilters();
+      });
+    });
+
+    // Theme select
+    document.getElementById("themeSelect").addEventListener("change", (e) => {
+      this.selectedTheme = e.target.value;
+      this.populateSubthemes();
+      this.applyFilters();
+    });
+
+    // Subtheme select
+    document
+      .getElementById("subthemeSelect")
+      .addEventListener("change", (e) => {
+        this.selectedSubtheme = e.target.value;
+        this.applyFilters();
       });
   }
 
@@ -61,7 +88,6 @@ class SpanishLearningApp {
   parseExercises(data) {
     this.exercises = [];
 
-    // Skip header row if it exists
     const startRow =
       data[0] &&
       typeof data[0][0] === "string" &&
@@ -72,17 +98,18 @@ class SpanishLearningApp {
     for (let i = startRow; i < data.length; i++) {
       const row = data[i];
       if (row && row[0] && row[1]) {
-        // Must have English and at least one Spanish translation
         const exercise = {
-          english: row[0].trim(),
+          english: row[0]?.trim(),
           spanish: [
             row[1] ? row[1].trim() : null,
             row[2] ? row[2].trim() : null,
             row[3] ? row[3].trim() : null,
           ].filter((translation) => translation !== null && translation !== ""),
           tip: row[4] ? row[4].trim() : null,
+          theme: row[5] ? row[5].trim() : "",
+          subtheme: row[6] ? row[6].trim() : "",
+          difficulty: row[7] ? row[7].trim().toUpperCase() : "",
         };
-
         if (exercise.spanish.length > 0) {
           this.exercises.push(exercise);
         }
@@ -96,7 +123,70 @@ class SpanishLearningApp {
       return;
     }
 
-    console.log(`Loaded ${this.exercises.length} exercises`);
+    this.populateThemes();
+    this.applyFilters();
+  }
+
+  // Populate theme dropdown
+  populateThemes() {
+    const themeSelect = document.getElementById("themeSelect");
+    const themes = Array.from(
+      new Set(this.exercises.map((ex) => ex.theme).filter(Boolean))
+    );
+    themeSelect.innerHTML =
+      `<option value="">All Themes</option>` +
+      themes
+        .map((theme) => `<option value="${theme}">${theme}</option>`)
+        .join("");
+    this.selectedTheme = "";
+    this.populateSubthemes();
+  }
+
+  // Populate subtheme dropdown based on selected theme
+  populateSubthemes() {
+    const subthemeSelect = document.getElementById("subthemeSelect");
+    let filtered = this.exercises;
+    if (this.selectedTheme) {
+      filtered = filtered.filter((ex) => ex.theme === this.selectedTheme);
+    }
+    const subthemes = Array.from(
+      new Set(filtered.map((ex) => ex.subtheme).filter(Boolean))
+    );
+    subthemeSelect.innerHTML =
+      `<option value="">All Subthemes</option>` +
+      subthemes.map((st) => `<option value="${st}">${st}</option>`).join("");
+    this.selectedSubtheme = "";
+  }
+
+  // Filter exercises based on difficulty, theme, subtheme
+  applyFilters() {
+    this.filteredExercises = this.exercises.filter((ex) => {
+      const diffMatch = this.selectedDifficulty
+        ? ex.difficulty === this.selectedDifficulty
+        : true;
+      const themeMatch = this.selectedTheme
+        ? ex.theme === this.selectedTheme
+        : true;
+      const subthemeMatch = this.selectedSubtheme
+        ? ex.subtheme === this.selectedSubtheme
+        : true;
+      return diffMatch && themeMatch && subthemeMatch;
+    });
+
+    if (this.filteredExercises.length === 0) {
+      document.getElementById("practiceSection").style.display = "none";
+      document.getElementById("statsSection").style.display = "none";
+      document.getElementById("loadingSection").style.display = "block";
+      document
+        .getElementById("loadingSection")
+        .querySelector("h3").textContent = "No exercises match your filters.";
+      return;
+    } else {
+      document.getElementById("loadingSection").style.display = "none";
+      document.getElementById("practiceSection").style.display = "block";
+      document.getElementById("statsSection").style.display = "block";
+      this.nextQuestion();
+    }
   }
 
   startPractice() {
@@ -107,14 +197,14 @@ class SpanishLearningApp {
   }
 
   nextQuestion() {
-    if (this.exercises.length === 0) {
-      alert("No exercises available!");
+    if (this.filteredExercises.length === 0) {
+      alert("No exercises available for the selected filters!");
       return;
     }
-
-    // Select a random exercise
-    const randomIndex = Math.floor(Math.random() * this.exercises.length);
-    this.currentExercise = this.exercises[randomIndex];
+    const randomIndex = Math.floor(
+      Math.random() * this.filteredExercises.length
+    );
+    this.currentExercise = this.filteredExercises[randomIndex];
 
     // Display the English sentence
     document.getElementById("englishText").textContent =
